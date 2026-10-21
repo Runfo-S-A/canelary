@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Printing;
 using System.IO;
 using System.Text.Json;
+using System.Windows;
 using System.Windows.Data;
 
 using Cohere.Models;
@@ -13,8 +14,6 @@ using Core.FileTree;
 using Core.Helpers;
 using Core.Services;
 using Core.Services.BackendModel;
-
-using Microsoft.IdentityModel.Tokens;
 
 namespace Cohere.ViewModels;
 
@@ -97,9 +96,10 @@ public class GenerateSampleViewModel : BindableBase, IDialogAware
         }
     }
 
-    private async Task PrintLabelsAsync(IEnumerable<ProductoMuestra> products)
+    private async Task<int> PrintLabelsAsync(IEnumerable<ProductoMuestra> products, string printer, string outputPath)
     {
         char[] invalidChars = Path.GetInvalidFileNameChars();
+        int savedImages = 0;
 
         ParallelOptions parallelOptions = new()
         {
@@ -115,18 +115,15 @@ public class GenerateSampleViewModel : BindableBase, IDialogAware
                     .ParseMetadata()
                     .LoadVariables(prod.Id, Fecha.ToString("yyyyMMdd"));
                 var safeSenasa = new string([.. prod.Senasa.Select(c => invalidChars.Contains(c) ? '_' : c)]);
-                var printer = Printers.CurrentItem.ToString()!;
                 if (printer == TO_PNG)
                 {
-                    string outputPath = @".\output";
-
                     if (!Directory.Exists(outputPath))
                     {
                         Directory.CreateDirectory(outputPath);
                     }
 
                     var images = await label.Build("12", "3.950x5.950"); // TODO!: Let the user set this parameters
-                    GenerateImage(images, $"{outputPath}\\{safeSenasa} - {prod.Id}");
+                    Interlocked.Add(ref savedImages, GenerateImage(images, Path.Combine(outputPath, $"{safeSenasa} - {prod.Id}")));
                 }
                 else
                 {
@@ -135,17 +132,15 @@ public class GenerateSampleViewModel : BindableBase, IDialogAware
             }
         });
 
-        if (IsCmdVisible && !AfterCommand.IsNullOrEmpty())
-        {
-            RunAfterCommand();
-        }
+        return savedImages;
     }
 
-    private static void GenerateImage(List<byte[]?>? imageBytesList, string outputPath)
+    private static int GenerateImage(List<byte[]?>? imageBytesList, string outputPath)
     {
+        int savedImages = 0;
         if (imageBytesList == null || imageBytesList.Count == 0)
         {
-            return;
+            return savedImages;
         }
 
         try
@@ -163,32 +158,54 @@ public class GenerateSampleViewModel : BindableBase, IDialogAware
                 using MemoryStream ms = new(bytes);
                 using Bitmap bitmap = new(ms);
                 bitmap.Save($"{outputPath}_{idx}.png", System.Drawing.Imaging.ImageFormat.Png);
+                savedImages++;
             }
         }
         catch (Exception ex)
         {
             Trace.TraceError($"{ex.Message} --- {outputPath}");
         }
+        return savedImages;
     }
 
-    private void RunAfterCommand()
+    private async Task RunAfterCommandAsync(string command)
     {
+        if (string.IsNullOrWhiteSpace(command))
+        {
+            return;
+        }
+
         try
         {
             ProcessStartInfo startInfo = new()
             {
                 FileName = "cmd.exe",
-                Arguments = $"/C {AfterCommand}",
+                Arguments = $"/C {command}",
                 CreateNoWindow = true,
                 UseShellExecute = false
             };
-            using Process process = Process.Start(startInfo)!;
-            process.WaitForExit();
-            SaveCachedAfterCommand();
+            using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException("No se pudo iniciar el comando.");
+            await process.WaitForExitAsync();
+            if (process.ExitCode != 0)
+            {
+                throw new InvalidOperationException($"El comando terminó con código {process.ExitCode}.");
+            }
         }
         catch (Exception ex)
         {
             Trace.TraceError($"Error executing after command: {ex.Message}");
+            MessageBox.Show($"Error al ejecutar el comando: {ex.Message}", Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        try
+        {
+            SaveCachedAfterCommand(command);
+        }
+        catch (Exception ex)
+        {
+            Trace.TraceError($"Error saving command history: {ex.Message}");
+            MessageBox.Show($"No se pudo guardar el historial de comandos: {ex.Message}", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -206,7 +223,7 @@ public class GenerateSampleViewModel : BindableBase, IDialogAware
             var history = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(CACHE_FILE));
             if (history is not null)
             {
-                foreach (var command in history)
+                foreach (var command in history.Where(command => !string.IsNullOrWhiteSpace(command)).Distinct(StringComparer.Ordinal).Take(MAX_HISTORY))
                 {
                     AfterCommandHistory.Add(command);
                 }
@@ -216,29 +233,63 @@ public class GenerateSampleViewModel : BindableBase, IDialogAware
         {
             // Old plain-text cache format or corrupt file: treat as no history.
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Trace.TraceError($"Error loading command history: {ex.Message}");
+            MessageBox.Show($"No se pudo leer el historial de comandos: {ex.Message}", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
-    private void SaveCachedAfterCommand()
+    private void SaveCachedAfterCommand(string command)
     {
-        if (string.IsNullOrEmpty(AfterCommand))
+        if (string.IsNullOrWhiteSpace(command))
         {
             return;
         }
 
-        AfterCommandHistory.Remove(AfterCommand);
-        AfterCommandHistory.Insert(0, AfterCommand);
+        var history = AfterCommandHistory.Prepend(command)
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Distinct(StringComparer.Ordinal).Take(MAX_HISTORY).ToList();
+        File.WriteAllText(CACHE_FILE, JsonSerializer.Serialize(history));
 
-        while (AfterCommandHistory.Count > MAX_HISTORY)
+        AfterCommandHistory.Clear();
+        foreach (var item in history)
         {
-            AfterCommandHistory.RemoveAt(AfterCommandHistory.Count - 1);
+            AfterCommandHistory.Add(item);
         }
 
-        File.WriteAllText(CACHE_FILE, JsonSerializer.Serialize(AfterCommandHistory));
+        // Collection notifications can clear the editable ComboBox's bound text.
+        AfterCommand = command;
     }
 
     private async Task ClosingDialog()
     {
-        await PrintLabelsAsync(ProductsList);
+        string printer = Printer;
+        string command = AfterCommand;
+        string outputPath = Path.GetFullPath(@".\output");
+        int savedImages = await PrintLabelsAsync(ProductsList, printer, outputPath);
+        if (printer == TO_PNG)
+        {
+            await RunAfterCommandAsync(command);
+            if (savedImages > 0 && MessageBox.Show("¿Desea abrir la carpeta de imágenes generadas?", Title,
+                    MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    if (!Directory.Exists(outputPath))
+                    {
+                        throw new DirectoryNotFoundException(outputPath);
+                    }
+                    using Process? process = Process.Start(new ProcessStartInfo(outputPath) { UseShellExecute = true });
+                }
+                catch (Exception ex)
+                {
+                    Trace.TraceError($"Error opening output folder: {ex.Message}");
+                    MessageBox.Show($"No se pudo abrir la carpeta de imágenes: {ex.Message}", Title,
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
         RequestClose.Invoke();
     }
 
