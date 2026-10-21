@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="../../Main/bin/Debug/net10.0-windows/*.dll" />
+    <Reference Include="../../Main/bin/Debug/net10.0-windows/Modules/Preview.BinaryKits.dll" />
+  </ItemGroup>
+</Project>

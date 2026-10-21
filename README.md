@@ -39,7 +39,14 @@ Canelary incluye una implementación con el sistema PiQuatro de Twins Informáti
 ## Preview:
 Servicio responsable de generar una previsualización digital de la etiqueta seleccionada.
 
-Canelary incluye una implementación con la API de Labelary.
+Canelary incluye implementaciones con las APIs de Labelary y BinaryKits.
+Para usar BinaryKits, configurar `Preview: "BinaryKits"` y
+`BinaryKitsUrl: "http://localhost:8080/"` en `Settings.yaml`, y reiniciar la aplicación.
+La URL puede apuntar a otra instancia de BinaryKits. Las dimensiones se convierten de pulgadas
+a milímetros y se generan todas las etiquetas. Los comandos no soportados aparecen en los errores
+de la preview; BinaryKits no ofrece posiciones para el resaltado del linter.
+Se acepta `ProductId` en metadata `#BinaryKits` o `#Labelary`; las sustituciones de fuentes
+`Languages` específicas de Labelary no se aplican en BinaryKits.
 
 ## Version:
 Servicio que administra el sistema de control de versionado a utilizar. Además de permitir modificar la forma en la que se almacenan las etiquetas con total transparencia.

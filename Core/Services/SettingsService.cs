@@ -29,6 +29,9 @@ public class SettingsService
     [YamlMember(Description = " - Servicio responsable de generar una previsualización digital de la etiqueta seleccionada")]
     public string Preview { get; set; } = "Labelary";
 
+    [YamlMember(Description = " - URL base de la API de BinaryKits")]
+    public string BinaryKitsUrl { get; set; } = "http://localhost:8080/";
+
     [YamlMember(Description = " - Servicio encargado de proporcionar los datos necesarios para completar las variables encontradas en las etiquetas con datos reales")]
     public string Backend { get; set; } = "Twins";
 
