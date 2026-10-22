@@ -432,8 +432,8 @@
         : p.labels.find(l => type && labelType(l) === type) ?? p.labels[0];
       matchSize($('label').value);
       $('labelGroup').hidden = p.labels.length < 2;
-      // Cada producto arranca como una pestaña nueva del Editor: sin rotación ni zoom.
-      angle = 0;
+      // Cada producto arranca como una pestaña nueva del Editor: sin zoom y con la rotación por defecto del tamaño.
+      angle = defaultAngle();
       zoom = { s: 1, x: 0, y: 0 };
       generate();
     }
@@ -514,9 +514,12 @@
     $('next').onclick = () => { index++; display(); };
     $('rotateLeft').onclick = () => { angle = (angle + 270) % 360; display(); };
     $('rotateRight').onclick = () => { angle = (angle + 90) % 360; display(); };
-    $('label').onchange = () => { matchSize($('label').value); generate(); };
+    // Caja se ve girada 90° en sentido horario; el resto, derecha.
+    const defaultAngle = () => $('size').selectedOptions[0]?.text.startsWith('Caja') ? 90 : 0;
+
+    $('label').onchange = () => { matchSize($('label').value); angle = defaultAngle(); generate(); };
     $('dpi').onchange = $('background').onchange = generate;
-    $('size').onchange = () => { updateBackground(); generate(); };
+    $('size').onchange = () => { updateBackground(); angle = defaultAngle(); generate(); };
 
     // ---- Zoom y arrastre (mismo comportamiento que Core/Controls/ZoomBorder) ----
     function applyZoom() {
