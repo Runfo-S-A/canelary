@@ -388,11 +388,13 @@
         while (next < jobs.length) {
           const i = next++, { p, label } = jobs[i];
           try {
-            const qs = previewQuery(label, sizeFor(label) ?? $('size').value);
+            const size = sizeFor(label) ?? $('size').value;
+            const qs = previewQuery(label, size);
             qs.set('monochrome', 'true'); // blanco y negro puro: el PDF pesa ~3 veces menos
             const data = await fetchPreview(p.id, qs);
             if (!data.images.length) throw new Error(data.error || 'la etiqueta no generó imágenes');
-            results[i] = data.images;
+            const turn = angleFor(size);
+            results[i] = turn ? await Promise.all(data.images.map(src => rotate(src, turn))) : data.images;
           } catch (e) {
             errors[i] = `${p.code} ${label}: ${e.message}`;
           }
@@ -407,7 +409,9 @@
       if (!pages.length) return;
 
       // shortcut: una sola medida de hoja (la de la primera etiqueta); si un tipo mezcla tamaños (Primaria/Israel) el resto se ajusta con object-fit.
-      const size = sizeFor(jobs[0].label) ?? $('size').value, [w, h] = size.split('x');
+      const size = sizeFor(jobs[0].label) ?? $('size').value;
+      // Caja se exporta girada como se ve: la hoja queda apaisada.
+      const [w, h] = angleFor(size) ? size.split('x').reverse() : size.split('x');
       // Con sombra la hoja suma su margen (.12in por lado) para que la etiqueta quede en tamaño real.
       const pad = $('shadow').checked ? .24 : 0;
       $('pageStyle').textContent = `@page { size: ${+w + pad}in ${+h + pad}in; margin: 0; }`;
@@ -514,8 +518,9 @@
     $('next').onclick = () => { index++; display(); };
     $('rotateLeft').onclick = () => { angle = (angle + 270) % 360; display(); };
     $('rotateRight').onclick = () => { angle = (angle + 90) % 360; display(); };
-    // Caja se ve girada 90° en sentido horario; el resto, derecha.
-    const defaultAngle = () => $('size').selectedOptions[0]?.text.startsWith('Caja') ? 90 : 0;
+    // Caja se ve y se exporta girada 90° en sentido horario; el resto, derecha.
+    const angleFor = size => [...$('size').options].find(o => o.value === size)?.text.startsWith('Caja') ? 90 : 0;
+    const defaultAngle = () => angleFor($('size').value);
 
     $('label').onchange = () => { matchSize($('label').value); angle = defaultAngle(); generate(); };
     $('dpi').onchange = $('background').onchange = generate;
