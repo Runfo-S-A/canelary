@@ -10,12 +10,12 @@
 ## 2. Image completion and folder opening
 
 - [x] 2.1 Return successful image-save counts from image generation and aggregate safely across parallel workers using the captured absolute output path; verify zero images, partial save failure, and multiple products count actual saves rather than old files.
-- [ ] 2.2 Add the Spanish Yes/No folder prompt after completed PNG generation and optional command handling, open the captured directory on Yes, and report launch errors without retrying generation; verify Yes, No, failed CMD, and missing-folder cases and confirm the sample dialog closes afterward.
-- [ ] 2.3 Verify physical printing, no selected products, and no valid image bytes never show the folder prompt, even with an existing output folder; record the manual results alongside the completion checks.
+- [x] 2.2 Add the Spanish Yes/No folder prompt after completed PNG generation and optional command handling, open the captured directory on Yes, and report launch errors without retrying generation; verify Yes, No, failed CMD, and missing-folder cases and confirm the sample dialog closes afterward.
+- [x] 2.3 Verify physical printing, no selected products, and no valid image bytes never show the folder prompt, even with an existing output folder; record the manual results alongside the completion checks.
 
 ## 3. Integration validation
 
-- [ ] 3.1 Run `dotnet build Canelary.sln -c Debug` and the focused regression check; verify a new command and a reused command survive reopening the dialog and that PNG completion offers the folder with both blank and failing optional commands. Record any environment-dependent checks that could not run.
+- [x] 3.1 Run `dotnet build Canelary.sln -c Debug` and the focused regression check; verify a new command and a reused command survive reopening the dialog and that PNG completion offers the folder with both blank and failing optional commands. Record any environment-dependent checks that could not run.
 
 ## Verification record
 
