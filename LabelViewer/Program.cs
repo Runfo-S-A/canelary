@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 
 using BackendTwins.Models;
@@ -16,6 +17,8 @@ var app = builder.Build();
 // SettingsService lee Settings.yaml relativo al directorio actual; se cambia después de Build para no mover el content root (wwwroot).
 Directory.SetCurrentDirectory(AppContext.BaseDirectory);
 
+// Misma región que el IDE (App.xaml.cs) para que [@...;FK0.00@] use el mismo separador decimal; Default* porque los requests corren en el thread pool.
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo(SettingsService.Instance.Culture);
 SettingsService.Instance.BinaryKitsUrl = app.Configuration["BinaryKitsUrl"] ?? SettingsService.Instance.BinaryKitsUrl;
 BackendServiceProvider.Set(new Twins());
 var etiquetasDir = app.Configuration["EtiquetasDir"] ?? throw new InvalidOperationException("Falta EtiquetasDir en appsettings.json");
