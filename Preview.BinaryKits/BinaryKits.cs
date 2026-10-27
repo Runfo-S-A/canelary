@@ -104,7 +104,15 @@ public class BinaryKits(string content) : IPreview
             printDensityDpmm = density,
             type = "image"
         });
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            // La primera línea del cuerpo trae el motivo (ej. el elemento ZPL inválido); el resto es el stack trace del servidor.
+            var body = await response.Content.ReadAsStringAsync();
+            var reason = body.Split('\n', 2)[0].Trim();
+            throw new HttpRequestException(
+                $"BinaryKits respondió {(int)response.StatusCode} ({response.ReasonPhrase}){(reason.Length > 0 ? $": {reason}" : ".")}",
+                null, response.StatusCode);
+        }
         return await response.Content.ReadFromJsonAsync<RenderResponse>()
             ?? throw new JsonException("BinaryKits devolvió una respuesta vacía.");
     }

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj" />
+    <ProjectReference Include="..\Backend.Twins\Backend.Twins.csproj" />
+    <ProjectReference Include="..\Preview.BinaryKits\Preview.BinaryKits.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Main\Settings.yaml" Link="Settings.yaml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Main\SizeList.xml" Link="SizeList.xml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Main\Resources\KumbhSans.ttf" Link="KumbhSans.ttf" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="backgrounds\*.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

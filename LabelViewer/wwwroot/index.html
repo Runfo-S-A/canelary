@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Canelary - Etiquetas</title>
+  <style>
+    @font-face { font-family: 'Kumbh Sans'; src: url('/KumbhSans.ttf') format('truetype'); font-weight: 100 900; }
+    /* Paleta de Main/App.xaml (tema Dark de Canelary) */
+    :root {
+      color-scheme: dark;
+      --bg: #211c1a;
+      --surface: #3e3836;
+      --mid: #765f51;
+      --accent: #d38d5f;
+      --secondary: #a58c7d;
+      --text: #ece0d8;
+      --muted: #b8a89e;
+      --on-accent: #1e1410;
+      --error: #f2a7a0;
+      --left: 360px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; height: 100vh; overflow: hidden;
+      font-family: 'Kumbh Sans', system-ui, sans-serif; font-weight: 300;
+      background: var(--bg); color: var(--text);
+      display: grid; grid-template-columns: var(--left) 5px 1fr;
+    }
+    select, input, button { font: inherit; color: inherit; }
+
+    /* Panel izquierdo */
+    aside { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+    #filter { margin: 10px 10px 0; padding: 8px 10px; background: var(--surface); border: 1px solid var(--mid); border-radius: 4px; }
+    #filter:focus, #filters select:focus { outline: none; border-color: var(--accent); }
+    #filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px; border-bottom: 1px solid var(--surface); font-size: .85em; }
+    #filters label { display: flex; align-items: center; gap: 6px; }
+    #filters select { background: var(--surface); border: 1px solid var(--mid); border-radius: 4px; padding: 3px 4px; max-width: 170px; }
+    #filters .icon { width: 28px; height: 28px; }
+    #filters .icon svg { width: 18px; height: 18px; }
+    li.empty { padding: 12px; color: var(--muted); font-size: .9em; }
+    #status { margin: 0 12px 8px; font-size: .85em; color: var(--muted); }
+    #status:empty { display: none; }
+    ul { list-style: none; margin: 0; padding: 0; overflow-y: auto; overflow-x: hidden; flex: 1; }
+    li { display: flex; border-bottom: 1px solid var(--surface); }
+    li:hover { background: var(--surface); }
+    li.selected { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+    li.current { background: var(--accent); color: var(--on-accent); }
+    /* Toda la franja izquierda de la fila marca el checkbox, no solo el cuadrado */
+    li .check { display: flex; align-items: center; padding: 0 2px 0 12px; cursor: pointer; }
+
+    /* Checkbox con el tema (el nativo es chico y gris claro sobre fondo oscuro) */
+    input[type="checkbox"] {
+      appearance: none; flex: none; width: 18px; height: 18px; margin: 0; display: grid; place-content: center;
+      border: 2px solid var(--secondary); border-radius: 3px; background: transparent; cursor: pointer;
+      transition: background-color .12s, border-color .12s;
+    }
+    input[type="checkbox"]::before {
+      content: ''; width: 10px; height: 10px; background: var(--on-accent); transform: scale(0); transition: transform .12s;
+      clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+    }
+    input[type="checkbox"]:hover { border-color: var(--accent); }
+    input[type="checkbox"]:checked, input[type="checkbox"]:indeterminate { background: var(--accent); border-color: var(--accent); }
+    input[type="checkbox"]:checked::before { transform: scale(1); }
+    input[type="checkbox"]:indeterminate::before { transform: scale(1); clip-path: inset(38% 8%); }
+    input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    /* En la fila actual (fondo acento) el checkbox se invierte para seguir visible */
+    li.current input[type="checkbox"] { border-color: var(--on-accent); }
+    li.current input[type="checkbox"]:checked { background: var(--on-accent); }
+    li.current input[type="checkbox"]::before { background: var(--accent); }
+    li.current input[type="checkbox"]:focus-visible { outline-color: var(--on-accent); }
+
+    /* Selección para exportar */
+    #listHeader { display: flex; align-items: center; gap: 14px; padding: 8px 0 8px 12px; border-bottom: 1px solid var(--surface); font-size: .85em; color: var(--muted); cursor: pointer; }
+    #selectionBar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 12px 8px 4px; background: var(--surface); border-top: 1px solid var(--mid); font-size: .9em; }
+    #selectionBar #clearSelection { margin-right: -4px; }
+    #shadowToggle { margin-left: auto; }
+    #selectionBar label { display: flex; align-items: center; gap: 6px; }
+    #selectionBar .icon { width: 28px; height: 28px; }
+    #selectionBar .icon svg { width: 18px; height: 18px; }
+    #exportHint { flex-basis: 100%; color: var(--muted); }
+    .text-button { background: var(--accent); color: var(--on-accent); border: 0; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: 400; }
+    .text-button:hover:not(:disabled) { filter: brightness(1.15); }
+    .text-button:disabled { opacity: .35; cursor: default; }
+    li button {
+      all: unset; box-sizing: border-box; display: block; flex: 1; min-width: 0; padding: 8px 12px; cursor: pointer;
+    }
+    li button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    li.current button:focus-visible { outline-color: var(--on-accent); }
+    li small { display: block; font-size: .75em; color: var(--muted); }
+    li.current small { color: var(--on-accent); opacity: .8; }
+    li .name { display: block; font-weight: 400; }
+
+    /* Divisor */
+    #splitter { background: var(--surface); cursor: col-resize; touch-action: none; }
+    #splitter:hover, #splitter:focus-visible, #splitter.dragging { background: var(--mid); outline: none; }
+
+    /* Panel derecho */
+    main { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 10px; gap: 10px; }
+    #toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+    #toolbar label { display: flex; align-items: center; gap: 8px; font-size: .9em; }
+    #toolbar select { background: var(--surface); border: 1px solid var(--mid); border-radius: 4px; padding: 4px 6px; max-width: 260px; }
+    #toolbar .spacer { flex: 1; }
+    #toolbar .group { display: flex; align-items: center; gap: 6px; }
+    #counter { font-size: 1.1em; min-width: 3em; text-align: center; }
+    .icon { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 4px; cursor: pointer; padding: 0; }
+    .icon svg { width: 20px; height: 20px; fill: currentColor; }
+    .icon.raised { background: var(--accent); color: var(--on-accent); }
+    .icon.flat { background: transparent; color: var(--accent); }
+    .icon:hover:not(:disabled) { filter: brightness(1.15); }
+    .icon:disabled { opacity: .35; cursor: default; }
+    #frame { flex: 1; min-height: 0; border: 5px solid var(--mid); }
+    #viewport { width: 100%; height: 100%; overflow: hidden; position: relative; cursor: default; touch-action: none; }
+    #viewport.panning { cursor: grabbing; }
+    #stage { width: 100%; height: 100%; transform-origin: 0 0; padding: 5px; }
+    #stage img { width: 100%; height: 100%; object-fit: contain; display: block; user-select: none; -webkit-user-drag: none; }
+    #message { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); pointer-events: none; }
+    #errors { margin: 0; max-height: 25vh; overflow: auto; color: var(--error); white-space: pre-wrap; font-size: .85em; }
+    #errors:empty { display: none; }
+    [hidden] { display: none !important; }
+
+    /* Exportación: solo se imprimen las etiquetas, una por hoja */
+    #print { display: none; }
+    @media print {
+      body { display: block; height: auto; overflow: visible; background: #fff; }
+      body > :not(#print) { display: none !important; }
+      #print { display: block; }
+      /* Medidas en pulgadas (Firefox no hace coincidir vw/vh con la hoja) y box-shadow en vez de
+         filter: drop-shadow, que Firefox rasteriza a baja resolución. El padding deja lugar a la sombra:
+         un margin se pierde después de un salto de página. */
+      #print div { padding: .12in; }
+      #print div + div { break-before: page; }
+      #print.flat div { padding: 0; }
+      #print.flat img { box-shadow: none; }
+      #print img {
+        display: block; width: var(--w); height: var(--h); object-fit: contain;
+        border-radius: var(--r); box-shadow: 0 .01in .04in rgba(0, 0, 0, .35); print-color-adjust: exact;
+      }
+    }
+  </style>
+  <style id="pageStyle"></style>
+</head>
+<body>
+  <aside>
+    <input id="filter" type="search" placeholder="Buscar producto..." aria-label="Buscar producto">
+    <div id="filters">
+      <label>Tipo <select id="typeFilter"><option value="">Todos</option></select></label>
+      <label>Etiqueta <select id="labelFilter"><option value="">Todas</option></select></label>
+      <label>Ordenar <select id="sortField">
+        <option value="id">Id</option>
+        <option value="name">Nombre</option>
+        <option value="code">Código</option>
+      </select></label>
+      <button id="sortDir" class="icon flat" aria-label="Orden ascendente" title="Orden ascendente">
+        <svg viewBox="0 0 24 24"><path id="sortIcon" d="M19 17H22L18 21L14 17H17V3H19M2 17H12V19H2M6 5V7H2V5M2 11H9V13H2V11Z"/></svg>
+      </button>
+    </div>
+    <div id="status" role="status">Cargando productos...</div>
+    <label id="listHeader"><input id="checkAll" type="checkbox" aria-label="Seleccionar todos los productos visibles"> <span id="count"></span></label>
+    <ul id="products"></ul>
+    <div id="selectionBar" hidden>
+      <button id="clearSelection" class="icon flat" aria-label="Limpiar selección" title="Limpiar selección">
+        <svg viewBox="0 0 24 24"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+      </button>
+      <span id="selCount" role="status"></span>
+      <label id="shadowToggle" title="Sombra alrededor de cada etiqueta en el PDF"><input id="shadow" type="checkbox" checked> Sombra</label>
+      <button id="export" class="text-button">Exportar PDF</button>
+      <small id="exportHint">Elegí un Tipo o una Etiqueta para exportar.</small>
+    </div>
+  </aside>
+  <div id="splitter" role="separator" aria-orientation="vertical" aria-label="Redimensionar paneles" tabindex="0"></div>
+  <main>
+    <div id="toolbar">
+      <label id="labelGroup" hidden>Etiqueta <select id="label"></select></label>
+      <label>DPI <select id="dpi"></select></label>
+      <label>Tamaño <select id="size"></select></label>
+      <label id="backgroundGroup" hidden>Fondo <select id="background"></select></label>
+      <span class="spacer"></span>
+      <div class="group">
+        <button id="prev" class="icon flat" aria-label="Imagen anterior" disabled>
+          <svg viewBox="0 0 24 24"><path d="M22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2A10,10 0 0,1 22,12M14,7L9,12L14,17V7Z"/></svg>
+        </button>
+        <span id="counter">0/0</span>
+        <button id="next" class="icon flat" aria-label="Imagen siguiente" disabled>
+          <svg viewBox="0 0 24 24"><path d="M2,12A10,10 0 0,1 12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12M10,17L15,12L10,7V17Z"/></svg>
+        </button>
+      </div>
+      <div class="group">
+        <button id="rotateLeft" class="icon raised" aria-label="Rotar a la izquierda" disabled>
+          <svg viewBox="0 0 24 24"><path d="M13,4.07V1L8.45,5.55L13,10V6.09C15.84,6.57 18,9.03 18,12C18,14.97 15.84,17.43 13,17.91V19.93C16.95,19.44 20,16.08 20,12C20,7.92 16.95,4.56 13,4.07M7.1,18.32C8.26,19.22 9.61,19.76 11,19.93V17.9C10.13,17.75 9.29,17.41 8.54,16.87L7.1,18.32M6.09,13H4.07C4.24,14.39 4.79,15.73 5.69,16.89L7.1,15.47C6.58,14.72 6.23,13.88 6.09,13M7.11,8.53L5.7,7.11C4.8,8.27 4.24,9.61 4.07,11H6.09C6.23,10.13 6.58,9.28 7.11,8.53Z"/></svg>
+        </button>
+        <button id="rotateRight" class="icon raised" aria-label="Rotar a la derecha" disabled>
+          <svg viewBox="0 0 24 24"><path d="M16.89,15.5L18.31,16.89C19.21,15.73 19.76,14.39 19.93,13H17.91C17.77,13.87 17.43,14.72 16.89,15.5M13,17.9V19.92C14.39,19.75 15.74,19.21 16.9,18.31L15.46,16.87C14.71,17.41 13.87,17.76 13,17.9M19.93,11C19.76,9.61 19.21,8.27 18.31,7.11L16.89,8.53C17.43,9.28 17.77,10.13 17.91,11M15.55,5.55L11,1V4.07C7.06,4.56 4,7.92 4,12C4,16.08 7.05,19.44 11,19.93V17.91C8.16,17.43 6,14.97 6,12C6,9.03 8.16,6.57 11,6.09V10L15.55,5.55Z"/></svg>
+        </button>
+      </div>
+      <button id="regenerate" class="icon raised" aria-label="Regenerar preview" title="Regenerar preview" disabled>
+        <svg viewBox="0 0 24 24"><path d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/></svg>
+      </button>
+    </div>
+    <div id="frame">
+      <div id="viewport">
+        <div id="stage"><img id="image" alt="" draggable="false" hidden></div>
+        <div id="message">Seleccioná un producto.</div>
+      </div>
+    </div>
+    <pre id="errors" aria-live="polite"></pre>
+  </main>
+  <div id="print"></div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const list = $('products'), viewport = $('viewport'), stage = $('stage'), image = $('image');
+    let products = [];
+    let product = null;     // producto seleccionado
+    let images = [];        // PNG en base64 de la etiqueta generada
+    let index = 0;          // imagen visible
+    let angle = 0;          // 0, 90, 180, 270 como PreviewViewModel.PreviewAngle
+    let zoom = { s: 1, x: 0, y: 0 };
+    let request = 0;        // descarta respuestas de pedidos viejos
+
+    function el(tag, text, cls) {
+      const e = document.createElement(tag);
+      if (text != null) e.textContent = text;
+      if (cls) e.className = cls;
+      return e;
+    }
+
+    function fill(select, items) {
+      select.replaceChildren(...items.map(i => Object.assign(el('option', i.display ?? i), { value: i.value ?? i })));
+    }
+
+    // ---- Lista de productos ----
+    let types = [];         // VirtualDirectories de Settings.yaml
+    let ascending = true;
+    const SORT_ASC = 'M19 17H22L18 21L14 17H17V3H19M2 17H12V19H2M6 5V7H2V5M2 11H9V13H2V11Z';
+    const SORT_DESC = 'M19 7H22L18 3L14 7H17V21H19M2 17H12V19H2M6 5V7H2V5M2 11H9V13H2V11Z';
+    const collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
+
+    // Misma regla que Core/FileTree/TreeGenerator: el primer directorio virtual cuyo filtro aparece en el nombre, si no "Otros".
+    const labelType = label => types.find(t => label.toLowerCase().includes(t.filter.toLowerCase()))?.name ?? 'Otros';
+
+    // Palabras completas: "nt" como subcadena también aparece en "rioplatense", "montura", "delantero".
+    const ISRAEL_WORDS = ['israel', 'kosher', 'adom', 'tnuva', 'nt', 'halak'];
+
+    // Tamaño de SizeList.xml según la etiqueta: Caja → Caja, Primaria → Primaria o Israel. Otros: null.
+    function sizeFor(label) {
+      const type = labelType(label);
+      const words = label.toLowerCase().split(/[_\-.\s]+/);
+      const name = type === 'Primaria' && words.some(w => ISRAEL_WORDS.includes(w)) ? 'Israel' : type;
+      return [...$('size').options].find(o => o.text.toLowerCase().startsWith(name.toLowerCase()))?.value ?? null;
+    }
+
+    function matchSize(label) {
+      const size = sizeFor(label);
+      if (size) $('size').value = size;
+      updateBackground();
+    }
+
+    // ---- Fondo: solo Israel se compone sobre una imagen de LabelViewer/backgrounds ----
+    let israelSize = null;
+
+    function updateBackground() {
+      $('backgroundGroup').hidden = $('size').value !== israelSize;
+    }
+
+    function previewQuery(label, size) {
+      const qs = new URLSearchParams({ label, dpi: $('dpi').value, size });
+      if (size === israelSize && $('background').value) qs.set('background', $('background').value);
+      return qs;
+    }
+
+    // ---- Selección para exportar ----
+    const selected = new Set();   // ids de productos marcados
+    let visible = [];             // productos que muestra la lista con los filtros actuales
+
+    const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+    function updateExport() {
+      const ready = !!($('typeFilter').value || $('labelFilter').value);
+      const all = visible.length > 0 && visible.every(p => selected.has(p.id));
+      $('checkAll').checked = all;
+      $('checkAll').indeterminate = !all && visible.some(p => selected.has(p.id));
+      $('count').textContent = plural(visible.length, 'producto');
+      $('selectionBar').hidden = !selected.size;
+      $('selCount').textContent = plural(selected.size, 'seleccionado');
+      $('export').disabled = !ready;
+      $('exportHint').hidden = ready;
+    }
+
+    function fillLabelFilter() {
+      const type = $('typeFilter').value, current = $('labelFilter').value;
+      const labels = [...new Set(products.flatMap(p => p.labels))]
+        .filter(l => !type || labelType(l) === type)
+        .sort(collator.compare);
+      fill($('labelFilter'), [{ display: 'Todas', value: '' }, ...labels]);
+      $('labelFilter').value = labels.includes(current) ? current : '';
+    }
+
+    // Con ~2700 productos dibujar todas las filas tarda ~250ms; se dibujan de a páginas al hacer scroll.
+    const PAGE = 100;
+    const rows = new Map();   // id → <li> de las filas ya dibujadas
+    let shown = 0;            // cuántos productos de `visible` ya tienen fila
+
+    function renderList() {
+      const q = $('filter').value.toLowerCase();
+      const type = $('typeFilter').value, label = $('labelFilter').value;
+      const field = $('sortField').value, dir = ascending ? 1 : -1;
+      visible = products
+        .filter(p => p.search.includes(q)
+          && (!type || p.labels.some(l => labelType(l) === type))
+          && (!label || p.labels.includes(label)))
+        .sort((a, b) => dir * (field === 'id' ? a.id - b.id : collator.compare(a[field], b[field])));
+      updateExport();
+      rows.clear();
+      shown = 0;
+      list.scrollTop = 0;
+      if (!visible.length && products.length) {
+        list.replaceChildren(el('li', 'Sin productos que coincidan.', 'empty'));
+        return;
+      }
+      list.replaceChildren();
+      appendRows();
+    }
+
+    function appendRows() {
+      const next = visible.slice(shown, shown + PAGE);
+      shown += next.length;
+      list.append(...next.map(row));
+    }
+
+    list.addEventListener('scroll', () => {
+      if (shown < visible.length && list.scrollTop + list.clientHeight > list.scrollHeight - 600) appendRows();
+    });
+
+    function row(p) {
+      const li = el('li');
+      const check = Object.assign(el('input'), { type: 'checkbox', checked: selected.has(p.id) });
+      check.setAttribute('aria-label', `Exportar ${p.name}`);
+      check.onchange = () => {
+        check.checked ? selected.add(p.id) : selected.delete(p.id);
+        li.classList.toggle('selected', check.checked);
+        updateExport();
+      };
+      const box = el('label', null, 'check');
+      box.append(check);
+      const b = el('button');
+      b.append(el('small', p.code), el('span', p.name, 'name'), el('small', `Id ${p.id} · ${p.labels.join(', ')}`));
+      b.setAttribute('aria-current', p === product);
+      b.onclick = () => selectProduct(p);
+      li.classList.toggle('selected', selected.has(p.id));
+      li.classList.toggle('current', p === product);
+      li.append(box, b);
+      rows.set(p.id, li);
+      return li;
+    }
+
+    // Actualiza las filas dibujadas sin reconstruir la lista (y sin perder el scroll).
+    function syncRows() {
+      for (const [id, li] of rows) {
+        const on = selected.has(id), current = product?.id === id;
+        li.querySelector('input').checked = on;
+        li.classList.toggle('selected', on);
+        li.classList.toggle('current', current);
+        li.querySelector('button').setAttribute('aria-current', current);
+      }
+      updateExport();
+    }
+
+    $('checkAll').onchange = () => {
+      visible.forEach(p => $('checkAll').checked ? selected.add(p.id) : selected.delete(p.id));
+      syncRows();
+    };
+    $('clearSelection').onclick = () => { selected.clear(); syncRows(); };
+
+    // ---- Exportar a PDF: genera las etiquetas del tipo filtrado y abre el diálogo de impresión ----
+    $('export').onclick = async () => {
+      const type = $('typeFilter').value, only = $('labelFilter').value;
+      const jobs = products
+        .filter(p => selected.has(p.id))
+        .flatMap(p => p.labels.filter(l => only ? l === only : labelType(l) === type).map(label => ({ p, label })));
+      if (!jobs.length) {
+        $('errors').textContent = 'Los productos seleccionados no tienen etiquetas de este tipo.';
+        return;
+      }
+
+      $('export').disabled = true;
+      // 4 pedidos en paralelo (~25% más rápido; BinaryKits no escala más). Los resultados quedan en orden.
+      const results = new Array(jobs.length), errors = [];
+      let next = 0, done = 0;
+      const worker = async () => {
+        while (next < jobs.length) {
+          const i = next++, { p, label } = jobs[i];
+          try {
+            const size = sizeFor(label) ?? $('size').value;
+            const qs = previewQuery(label, size);
+            qs.set('monochrome', 'true'); // blanco y negro puro: el PDF pesa ~3 veces menos
+            const data = await fetchPreview(p.id, qs);
+            if (!data.images.length) throw new Error(data.error || 'la etiqueta no generó imágenes');
+            const turn = angleFor(size);
+            results[i] = turn ? await Promise.all(data.images.map(src => rotate(src, turn))) : data.images;
+          } catch (e) {
+            errors[i] = `${p.code} ${label}: ${e.message}`;
+          }
+          $('status').textContent = `Exportando ${++done}/${jobs.length}...`;
+        }
+      };
+      await Promise.all(Array.from({ length: 4 }, worker));
+      const pages = results.flat().filter(Boolean);
+      $('status').textContent = '';
+      $('errors').textContent = errors.some(Boolean) ? `No se exportaron:\n${errors.filter(Boolean).join('\n')}` : '';
+      updateExport();
+      if (!pages.length) return;
+
+      // shortcut: una sola medida de hoja (la de la primera etiqueta); si un tipo mezcla tamaños (Primaria/Israel) el resto se ajusta con object-fit.
+      const size = sizeFor(jobs[0].label) ?? $('size').value;
+      // Caja se exporta girada como se ve: la hoja queda apaisada.
+      const [w, h] = angleFor(size) ? size.split('x').reverse() : size.split('x');
+      // Con sombra la hoja suma su margen (.12in por lado) para que la etiqueta quede en tamaño real.
+      const pad = $('shadow').checked ? .24 : 0;
+      $('pageStyle').textContent = `@page { size: ${+w + pad}in ${+h + pad}in; margin: 0; }`;
+      $('print').classList.toggle('flat', !pad);
+      // Primaria sale con esquinas redondeadas (PostProcessors.Rounded: radio 95px sobre 944px de ancho).
+      const rounded = size === [...$('size').options].find(o => o.text.startsWith('Primaria'))?.value;
+      $('print').style.cssText = `--w: ${w}in; --h: ${h}in; --r: ${rounded ? w * 95 / 944 : 0}in`;
+      const imgs = pages.map(src => Object.assign(el('img'), { src, alt: '' }));
+      $('print').replaceChildren(...imgs.map(img => { const page = el('div'); page.append(img); return page; }));
+      // decode() no se resuelve en imágenes dentro de un contenedor display:none; se espera el load.
+      await Promise.all(imgs.map(img => img.complete || new Promise(r => img.onload = img.onerror = r)));
+      window.print();
+    };
+
+    function selectProduct(p) {
+      product = p;
+      syncRows();
+      fill($('label'), p.labels);
+      // Arranca en la etiqueta filtrada, o en la primera del tipo filtrado; si no hay filtro, la primera.
+      const type = $('typeFilter').value, filtered = $('labelFilter').value;
+      $('label').value = p.labels.includes(filtered) ? filtered
+        : p.labels.find(l => type && labelType(l) === type) ?? p.labels[0];
+      matchSize($('label').value);
+      $('labelGroup').hidden = p.labels.length < 2;
+      // Cada producto arranca como una pestaña nueva del Editor: sin zoom y con la rotación por defecto del tamaño.
+      angle = defaultAngle();
+      zoom = { s: 1, x: 0, y: 0 };
+      generate();
+    }
+
+    // ---- Preview ----
+    async function fetchPreview(id, qs) {
+      const res = await fetch(`/api/products/${id}/preview?${qs}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
+    // shortcut: vive lo que dure la página; si cambian los datos de un producto, recargar para verlos.
+    const previewCache = new Map();   // "id?query" → respuesta, del más viejo al más reciente
+    const CACHE_SIZE = 30;
+
+    async function generate(refresh = false) {
+      if (!product) return;
+      $('regenerate').disabled = false;
+      const id = ++request;
+      const qs = previewQuery($('label').value, $('size').value), key = `${product.id}?${qs}`;
+      if (refresh) previewCache.delete(key);
+      let data = previewCache.get(key);
+      if (!data) showImages([], `Generando ${$('label').value}...`);
+      $('errors').textContent = '';
+      try {
+        data ??= await fetchPreview(product.id, qs);
+        previewCache.delete(key);
+        previewCache.set(key, data);
+        if (previewCache.size > CACHE_SIZE) previewCache.delete(previewCache.keys().next().value);
+        if (id !== request) return;
+        showImages(data.images, data.images.length ? '' : 'La etiqueta no generó imágenes.');
+        $('errors').textContent = data.error ?? '';
+      } catch (e) {
+        if (id !== request) return;
+        showImages([], '');
+        $('errors').textContent = `Error: ${e.message}`;
+      }
+    }
+
+    function showImages(list, message) {
+      images = list;
+      index = 0;
+      $('message').textContent = message;
+      display();
+    }
+
+    async function display() {
+      const has = images.length > 0;
+      $('counter').textContent = has ? `${index + 1}/${images.length}` : '0/0';
+      $('prev').disabled = !has || index === 0;
+      $('next').disabled = !has || index >= images.length - 1;
+      $('rotateLeft').disabled = $('rotateRight').disabled = !has;
+      image.hidden = !has;
+      if (!has) { image.removeAttribute('src'); return; }
+      image.src = angle ? await rotate(images[index], angle) : images[index];
+      applyZoom();
+    }
+
+    // Rota los píxeles (como el TransformedBitmap del Editor) para que la imagen vuelva a ajustarse al área.
+    function rotate(src, deg) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          const swap = deg % 180 !== 0;
+          c.width = swap ? img.height : img.width;
+          c.height = swap ? img.width : img.height;
+          const ctx = c.getContext('2d');
+          ctx.translate(c.width / 2, c.height / 2);
+          ctx.rotate(deg * Math.PI / 180);
+          ctx.drawImage(img, -img.width / 2, -img.height / 2);
+          resolve(c.toDataURL());
+        };
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    $('prev').onclick = () => { index--; display(); };
+    $('next').onclick = () => { index++; display(); };
+    $('rotateLeft').onclick = () => { angle = (angle + 270) % 360; display(); };
+    $('rotateRight').onclick = () => { angle = (angle + 90) % 360; display(); };
+    // Caja se ve y se exporta girada 90° en sentido horario; el resto, derecha.
+    const angleFor = size => [...$('size').options].find(o => o.value === size)?.text.startsWith('Caja') ? 90 : 0;
+    const defaultAngle = () => angleFor($('size').value);
+
+    $('label').onchange = () => { matchSize($('label').value); angle = defaultAngle(); generate(); };
+    $('dpi').onchange = $('background').onchange = () => generate();
+    $('regenerate').onclick = () => generate(true);
+    $('size').onchange = () => { updateBackground(); angle = defaultAngle(); generate(); };
+
+    // ---- Zoom y arrastre (mismo comportamiento que Core/Controls/ZoomBorder) ----
+    function applyZoom() {
+      stage.style.transform = `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.s})`;
+    }
+
+    viewport.addEventListener('wheel', e => {
+      e.preventDefault();
+      if (image.hidden) return;
+      const step = e.deltaY < 0 ? .2 : -.2;
+      if (step < 0 && zoom.s < .4) return;
+      const r = viewport.getBoundingClientRect();
+      const mx = e.clientX - r.left, my = e.clientY - r.top;
+      const rx = (mx - zoom.x) / zoom.s, ry = (my - zoom.y) / zoom.s;
+      zoom.s += step;
+      zoom.x = mx - rx * zoom.s;
+      zoom.y = my - ry * zoom.s;
+      applyZoom();
+    }, { passive: false });
+
+    let pan = null;
+    viewport.addEventListener('pointerdown', e => {
+      if (e.button !== 0 || image.hidden) return;
+      // Sin esto el navegador inicia el arrastre nativo de la <img>, que cancela el pointer y corta el pan.
+      e.preventDefault();
+      pan ={ x: e.clientX, y: e.clientY, ox: zoom.x, oy: zoom.y };
+      viewport.setPointerCapture(e.pointerId);
+      viewport.classList.add('panning');
+    });
+    viewport.addEventListener('pointermove', e => {
+      if (!pan) return;
+      zoom.x = pan.ox + e.clientX - pan.x;
+      zoom.y = pan.oy + e.clientY - pan.y;
+      applyZoom();
+    });
+    const endPan = () => { pan = null; viewport.classList.remove('panning'); };
+    viewport.addEventListener('pointerup', endPan);
+    viewport.addEventListener('pointercancel', endPan);
+    viewport.addEventListener('dragstart', e => e.preventDefault());
+    viewport.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      zoom = { s: 1, x: 0, y: 0 };
+      applyZoom();
+    });
+
+    // ---- Divisor de paneles ----
+    const splitter = $('splitter');
+    const setLeft = px => document.documentElement.style.setProperty('--left',
+      `${Math.max(200, Math.min(px, window.innerWidth - 320))}px`);
+    splitter.addEventListener('pointerdown', e => {
+      splitter.setPointerCapture(e.pointerId);
+      splitter.classList.add('dragging');
+    });
+    splitter.addEventListener('pointermove', e => {
+      if (splitter.hasPointerCapture(e.pointerId)) setLeft(e.clientX);
+    });
+    splitter.addEventListener('pointerup', () => splitter.classList.remove('dragging'));
+    splitter.addEventListener('keydown', e => {
+      const step = { ArrowLeft: -20, ArrowRight: 20 }[e.key];
+      if (step) setLeft(document.querySelector('aside').offsetWidth + step);
+    });
+
+    // ---- Carga inicial ----
+    let searchTimer;
+    $('filter').oninput = () => { clearTimeout(searchTimer); searchTimer = setTimeout(renderList, 150); };
+    $('typeFilter').onchange = () => { fillLabelFilter(); renderList(); };
+    $('labelFilter').onchange = $('sortField').onchange = renderList;
+    $('sortDir').onclick = () => {
+      ascending = !ascending;
+      const text = ascending ? 'Orden ascendente' : 'Orden descendente';
+      $('sortIcon').setAttribute('d', ascending ? SORT_ASC : SORT_DESC);
+      $('sortDir').setAttribute('aria-label', text);
+      $('sortDir').title = text;
+      renderList();
+    };
+
+    const options = fetch('/api/options').then(r => r.json()).then(o => {
+      fill($('dpi'), o.dpis);
+      $('dpi').selectedIndex = 2; // 12dpmm, igual que el Editor
+      fill($('size'), o.sizes);
+      fill($('background'), o.backgrounds);
+      israelSize = o.sizes.find(s => s.display.startsWith('Israel'))?.value ?? null;
+      updateBackground();
+      types = o.types;
+      fill($('typeFilter'), [{ display: 'Todos', value: '' }, ...types.map(t => t.name).sort(collator.compare), 'Otros']);
+    });
+
+    Promise.all([options, fetch('/api/products')
+      .then(r => r.ok ? r.json() : r.text().then(t => Promise.reject(new Error(t || `HTTP ${r.status}`))))])
+      .then(([, data]) => {
+        data.forEach(p => p.search = `${p.id} ${p.code} ${p.name} ${p.senasa}`.toLowerCase());
+        products = data; $('status').textContent = ''; fillLabelFilter(); renderList();
+      })
+      .catch(e => { $('status').textContent = `Error: ${e.message}`; $('status').style.color = 'var(--error)'; });
+  </script>
+</body>
+</html>

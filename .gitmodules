@@ -1,0 +1,4 @@
+[submodule "BinaryKits.Zpl"]
+	path = BinaryKits.Zpl
+	url = https://github.com/Runfo-S-A/BinaryKits.Zpl.git
+	branch = canelary
